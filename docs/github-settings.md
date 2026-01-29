@@ -80,11 +80,24 @@ For solo developers who want to require PRs but allow self-merge:
 # 1. Enable branch protection on main (require PRs, allow self-merge)
 gh api repos/bmcdonough/example-repo/branches/main/protection \
   --method PUT \
-  --field required_pull_request_reviews='{"required_approving_review_count":0}' \
-  --field restrictions=null \
-  --field enforce_admins=false \
-  --field allow_force_pushes=false \
-  --field allow_deletions=false
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": false,
+    "contexts": []
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "enforce_admins": false,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
 
 # 2. Set squash as default merge method
 gh repo edit bmcdonough/example-repo \
@@ -98,7 +111,7 @@ gh repo edit bmcdonough/example-repo --delete-branch-on-merge
 # 4. Verify settings
 gh api repos/bmcdonough/example-repo/branches/main/protection
 gh repo view bmcdonough/example-repo \
-  --json allowMergeCommit,allowSquashMerge,allowRebaseMerge,deleteBranchOnMerge
+  --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed,deleteBranchOnMerge
 ```
 
 ### Using Web Interface
@@ -127,12 +140,27 @@ Require pull requests but allow self-approval (0 required approvals):
 ```bash
 gh api repos/bmcdonough/example-repo/branches/main/protection \
   --method PUT \
-  --field required_pull_request_reviews='{"required_approving_review_count":0}' \
-  --field restrictions=null \
-  --field enforce_admins=false \
-  --field allow_force_pushes=false \
-  --field allow_deletions=false
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": false,
+    "contexts": []
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "enforce_admins": false,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
 ```
+
+**Important**: The GitHub API requires `required_status_checks` to be included (even if empty). Using `--input -` with a heredoc ensures proper JSON formatting for nested objects. The older `--field` syntax doesn't properly handle nested JSON and will result in HTTP 422 errors.
 
 **What this does:**
 - Requires all changes to go through pull requests
@@ -147,15 +175,24 @@ Require at least 1 approval before merging:
 ```bash
 gh api repos/bmcdonough/example-repo/branches/main/protection \
   --method PUT \
-  --field required_pull_request_reviews='{
-    "required_approving_review_count":1,
-    "dismiss_stale_reviews":true,
-    "require_code_owner_reviews":false
-  }' \
-  --field restrictions=null \
-  --field enforce_admins=false \
-  --field allow_force_pushes=false \
-  --field allow_deletions=false
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": false,
+    "contexts": []
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "enforce_admins": false,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
 ```
 
 **What this does:**
@@ -171,18 +208,24 @@ Require CI/CD tests to pass before merging:
 ```bash
 gh api repos/bmcdonough/example-repo/branches/main/protection \
   --method PUT \
-  --field required_status_checks='{
-    "strict":true,
-    "contexts":["Lint / lint","Test / test (3.9)","Test / test (3.10)","Test / test (3.11)","Test / test (3.12)"]
-  }' \
-  --field required_pull_request_reviews='{
-    "required_approving_review_count":1,
-    "dismiss_stale_reviews":true
-  }' \
-  --field restrictions=null \
-  --field enforce_admins=false \
-  --field allow_force_pushes=false \
-  --field allow_deletions=false
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Lint / lint", "Test / test (3.9)", "Test / test (3.10)", "Test / test (3.11)", "Test / test (3.12)"]
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "enforce_admins": false,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
 ```
 
 **What this does:**
@@ -406,15 +449,15 @@ Check current merge strategy configuration:
 ```bash
 # Check merge settings
 gh repo view bmcdonough/example-repo \
-  --json allowMergeCommit,allowSquashMerge,allowRebaseMerge
+  --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed
 
 # Pretty-printed
 gh repo view bmcdonough/example-repo \
-  --json allowMergeCommit,allowSquashMerge,allowRebaseMerge \
+  --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed \
   --jq '{
-    merge_commit: .allowMergeCommit,
-    squash_merge: .allowSquashMerge,
-    rebase_merge: .allowRebaseMerge
+    merge_commit: .mergeCommitAllowed,
+    squash_merge: .squashMergeAllowed,
+    rebase_merge: .rebaseMergeAllowed
   }'
 ```
 
@@ -552,11 +595,11 @@ fi
 echo ""
 echo "=== Merge Strategy Settings ==="
 gh repo view $REPO \
-  --json allowMergeCommit,allowSquashMerge,allowRebaseMerge \
+  --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed \
   --jq '{
-    merge_commit_allowed: .allowMergeCommit,
-    squash_merge_allowed: .allowSquashMerge,
-    rebase_merge_allowed: .allowRebaseMerge
+    merge_commit_allowed: .mergeCommitAllowed,
+    squash_merge_allowed: .squashMergeAllowed,
+    rebase_merge_allowed: .rebaseMergeAllowed
   }'
 
 echo ""
@@ -609,13 +652,60 @@ Use this checklist to manually verify settings:
 gh api repos/bmcdonough/example-repo/branches/main/protection \
   --jq '.required_pull_request_reviews' && \
 gh repo view bmcdonough/example-repo \
-  --json allowSquashMerge,allowMergeCommit,allowRebaseMerge \
-  --jq 'select(.allowSquashMerge == true and .allowMergeCommit == false and .allowRebaseMerge == false)'
+  --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed \
+  --jq 'select(.squashMergeAllowed == true and .mergeCommitAllowed == false and .rebaseMergeAllowed == false)'
 ```
 
 If this returns data, your core settings are configured correctly.
 
 ## Troubleshooting
+
+### "Invalid request" or HTTP 422 Error When Setting Branch Protection
+
+**Problem**: Branch protection command fails with validation errors.
+
+**Error Message**:
+```
+{
+  "message": "Invalid request.\n\nNo subschema in \"anyOf\" matched.\n\"required_status_checks\" wasn't supplied.\nFor 'allOf/0', \"{\\\"required_approving_review_count\\\":0}\" is not an object.",
+  "status": "422"
+}
+```
+
+**Cause**: Using `--field` flag with nested JSON objects doesn't work properly. The GitHub API requires `required_status_checks` to be present and properly formatted as a JSON object.
+
+**Solution**:
+
+Use `--input -` with a heredoc instead of `--field`:
+
+```bash
+gh api repos/bmcdonough/example-repo/branches/main/protection \
+  --method PUT \
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": false,
+    "contexts": []
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "enforce_admins": false,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
+```
+
+**Why this works**:
+- `--input -` accepts properly formatted JSON from stdin
+- Heredoc (`<<'EOF'`) preserves exact JSON structure
+- All required fields are included with correct data types
+- Nested objects are properly formatted
 
 ### "Resource not accessible by integration" Error
 
@@ -684,8 +774,8 @@ gh api repos/bmcdonough/example-repo/branches/main/protection
    ```bash
    # Check if squash merge is enabled
    gh repo view bmcdonough/example-repo \
-     --json allowSquashMerge \
-     --jq '{squash_merge_enabled: .allowSquashMerge}'
+     --json squashMergeAllowed \
+     --jq '{squash_merge_enabled: .squashMergeAllowed}'
    ```
 
    If `false`, enable it:

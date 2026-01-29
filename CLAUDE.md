@@ -23,12 +23,27 @@ The repository documents these commonly used GitHub CLI patterns:
 ```bash
 gh api repos/OWNER/REPO/branches/main/protection \
   --method PUT \
-  --field required_pull_request_reviews='{"required_approving_review_count":0}' \
-  --field restrictions=null \
-  --field enforce_admins=false \
-  --field allow_force_pushes=false \
-  --field allow_deletions=false
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": false,
+    "contexts": []
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false
+  },
+  "restrictions": null,
+  "enforce_admins": false,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
 ```
+
+**Note**: Use `--input -` with heredoc for proper JSON formatting. The `--field` flag doesn't handle nested JSON objects correctly and will cause HTTP 422 errors.
 
 **Set Squash Merge as Default:**
 ```bash
@@ -50,7 +65,7 @@ gh api repos/OWNER/REPO/branches/main/protection
 
 # Check merge settings
 gh repo view OWNER/REPO \
-  --json allowMergeCommit,allowSquashMerge,allowRebaseMerge
+  --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed
 ```
 
 ## Documented Workflow
