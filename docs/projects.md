@@ -9,7 +9,7 @@ cd influxdb-to-victoriametrics
 
 # 2. Add a README/initial commit if repo created empty
 echo "# InfluxDB to VictoriaMetrics Migration" > README.md
-git add README.md && git commit -m "Initial commit" && git push
+git add README.md && git commit -m "Initial commit" && git push --set-upstream origin main
 
 # 3. Create a Projects v2 board and link it to the repo
 gh project create --owner "@me" --title "InfluxDB → VictoriaMetrics Migration"
